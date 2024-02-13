@@ -1,55 +1,47 @@
-use jsi::{
-    host_object, FromObject, FromValue, IntoValue, JsiFn, JsiObject, JsiString, JsiValue, PropName, RuntimeHandle
-};
+use decimal::FastDecimal;
+use jsi::{FromValue, IntoValue, JsiFn, PropName};
+use rust_decimal::Decimal;
+
+mod helpers;
+mod decimal;
 
 #[cfg(target_os = "android")]
 mod android;
 
 pub fn init(rt: *mut jsi::sys::Runtime, call_invoker: cxx::SharedPtr<jsi::sys::CallInvoker>) {
     let (mut rt, _) = jsi::init(rt, call_invoker);
+    helpers::log_to_console(&mut rt, "hello from Rust");
+    // TODO: I want this struct to be instantiated with a value (as a rust object)...so actually
+    // I want a function, that takes a value, and returns a rust object, and then I want to call
 
-    let console = PropName::new("console", &mut rt);
-    let console = rt.global().get(console, &mut rt);
-    let console = JsiObject::from_value(&console, &mut rt).unwrap();
+    let decimal_from_string_name = "__FastDecimal";
 
-    let console_log = console.get(PropName::new("log", &mut rt), &mut rt);
-    let console_log = JsiObject::from_value(&console_log, &mut rt).unwrap();
-    let console_log = JsiFn::from_object(&console_log, &mut rt).unwrap();
-    console_log
-        .call(
-            [JsiString::new("hello from Rust", &mut rt).into_value(&mut rt)],
-            &mut rt,
-        )
-        .unwrap();
+    // Create a FastDecimal instance from a string
+    let decimal_from_string = JsiFn::from_host_fn(
+        &PropName::new(&decimal_from_string_name, &mut rt), 
+        1, 
+        Box::new(move |_this, args, rt| {
+            // TODO: Support number as well (Or should this validation happen in JS?)
+            if args.len() != 1 {
+                // Kind of weird that I am using the Ok variant here but I don't
+                // want a runtime crash...maybe this is handled above but I want 
+                // the error to happen in JS
+                return Err(anyhow::anyhow!("Invalid args"));
+            }
 
-    // we called console.log("hello from Rust") using JSI! you should see the
-    // log in your React Native bundler terminal
+            let string = &args[0];
+            let string = String::from_value(string, rt);
+            match string {
+                Some(s) => {
+                    let decimal = Decimal::from_str_exact(&s)?;
+                    Ok(FastDecimal::new(decimal).into_value(rt))
+                }
+                None => Err(anyhow::anyhow!("Invalid string")),
+            }
+        }), 
+        &mut rt
+    );
 
-    // this is just an example, but from here, you could spawn threads or really
-    // do whatever you want with the RuntimeHandle
-
-    // make sure that any multithreaded operations use the CallInvoker if they
-    // want to call back to JavaScript
-
-    // now, for my next trick, I will add a host object to the global namespace
-    let host_object = ExampleHostObject;
-    let host_object = host_object.into_value(&mut rt);
-
-    rt.global().set(PropName::new("ExampleGlobal", &mut rt), &host_object, &mut rt);
-
-    let global_str = JsiString::new("hallo", &mut rt);
-    let global_str = global_str.into_value(&mut rt);
-    rt.global().set(PropName::new("ExampleGlobal2", &mut rt), &global_str, &mut rt);
-
-    let global_num = JsiValue::new_number(3.200);
-    rt.global().set(PropName::new("ExampleGlobal3", &mut rt), &global_num, &mut rt);
-}
-
-struct ExampleHostObject;
-
-#[host_object]
-impl ExampleHostObject {
-    pub fn time(&self, _rt: &mut RuntimeHandle) -> anyhow::Result<i64> {
-        Ok(3200)
-    }
+    let host_fn = decimal_from_string.into_value(&mut rt);
+    helpers::set_global_value(&mut rt, &decimal_from_string_name, &host_fn);
 }

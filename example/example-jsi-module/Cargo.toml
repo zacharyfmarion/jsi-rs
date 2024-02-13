@@ -13,3 +13,4 @@ jsi = { path = "../../jsi" }
 anyhow = { version = "1.0", features = ["backtrace"] }
 jni = "0.21.1"
 cxx = "1.0.106"
+rust_decimal = "1.34.3"

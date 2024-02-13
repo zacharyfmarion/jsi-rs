@@ -30,8 +30,12 @@ import {
 const {ExampleJsiModule} = NativeModules;
 ExampleJsiModule.install();
 
-// call our global object injected by Rust
-console.log('the current time is: ' + ExampleGlobal.time());
+const decimal = __FastDecimal('123.456');
+console.log(decimal);
+console.log(typeof decimal.toString());
+console.log(decimal.toString());
+console.log(typeof decimal.toNumber());
+console.log(decimal.toNumber());
 
 type SectionProps = PropsWithChildren<{
   title: string;

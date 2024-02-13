@@ -43,6 +43,7 @@ mod host_object;
 /// override this, you can set a name with `#[host_object(method as
 /// custom_method_name)]` or `#[host_object(getter as custom_prop_name)]`.
 /// 
+#[proc_macro_error]
 #[proc_macro_attribute]
 pub fn host_object(
     _attr_input: proc_macro::TokenStream,
@@ -50,7 +51,6 @@ pub fn host_object(
 ) -> proc_macro::TokenStream {
     let impl_block = parse_macro_input!(attr_target as host_object::HostObjectImpl);
     let s = proc_macro::TokenStream::from(impl_block.0);
-    // println!("{}", s);
     s
 }
 
