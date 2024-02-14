@@ -25,22 +25,14 @@ pub fn call_obj_method<'rt, T: IntoIterator<Item = JsiValue<'rt>>>(
     }
 
     let obj = JsiObject::from_value(value, rt)
-        .ok_or(anyhow::anyhow!("Failed to convert value to object"))?;
-    let method = get_object_field_as_fn(&obj, rt, field_name);
+        .ok_or_else(|| anyhow::anyhow!("Failed to convert value to object"))?;
 
-    match method {
-        Some(m) => {
-            return m
-                .call_with_this(&obj, args, rt)
-                .map_err(|_| anyhow::anyhow!("Failed to call method"));
-        }
-        None => {
-            return Err(anyhow::anyhow!(
-                "Cannot call method {} on object",
-                field_name
-            ));
-        }
-    }
+    let method = get_object_field_as_fn(&obj, rt, field_name)
+        .ok_or_else(|| anyhow::anyhow!("Cannot call method {} on object", field_name))?;
+
+    method
+        .call_with_this(&obj, args, rt)
+        .map_err(|_| anyhow::anyhow!("Failed to call method"))
 }
 
 // Get a field from an object. Note that JsiValue could be undefined, and needs to be checked is is_undefined()
