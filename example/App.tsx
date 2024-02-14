@@ -15,7 +15,6 @@ import {
   Text,
   useColorScheme,
   View,
-  NativeModules,
 } from 'react-native';
 
 import {
@@ -25,21 +24,17 @@ import {
   LearnMoreLinks,
   ReloadInstructions,
 } from 'react-native/Libraries/NewAppScreen';
-
-// call our Rust module
-const {ExampleJsiModule} = NativeModules;
-ExampleJsiModule.install();
-
-const decimal = __FastDecimal('123.456');
-console.log(decimal);
-console.log(typeof decimal.toString());
-console.log(decimal.toString());
-console.log(typeof decimal.toNumber());
-console.log(decimal.toNumber());
+import {Decimal} from './Decimal';
 
 type SectionProps = PropsWithChildren<{
   title: string;
 }>;
+
+const decimal1 = new Decimal('123.456');
+const decimal2 = new Decimal('8.83');
+
+const decimal3 = decimal1.add(decimal2);
+console.log('decimal3:', decimal3.toString());
 
 function Section({children, title}: SectionProps): JSX.Element {
   const isDarkMode = useColorScheme() === 'dark';
