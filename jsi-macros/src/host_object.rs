@@ -23,6 +23,8 @@ enum HostObjectHelper {
     Include,
 }
 
+// Allows us to parse attribute props into our HostObjectHelper enum
+// This stores the name of the getter or setter, or the name of the method
 impl Parse for HostObjectHelper {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
         let id: Ident = input.parse()?;
@@ -122,14 +124,24 @@ impl Parse for HostObjectImpl {
                 ImplItem::Fn(it) => {
                     let mut helper: Option<HostObjectHelper> = None;
 
+                    // Attributes look like `#[repr(transparent)]` or `#![feature(proc_macro)]`
+                    // There are 6 types of attributes. This code is only interested in the
+                    // `host_object` attribute.
+                    // This code looks looks for attributes specifying getters and setters like this:
+                    // 
+                    // #[host_object(getter)]
+                    // #[host_object(setter)]
                     it.attrs = it
                         .attrs
                         .iter()
                         .map(|attr| {
                             if !attr.path().is_ident("host_object") {
-                                return Ok(Some(attr.clone()));
+                               return Ok(Some(attr.clone()));
                             }
 
+                            // Parse the attribute and store the result in `helper`
+                            // #[host_object(getter)]
+                            //              ^^^^^^^ what gets parsed
                             if let None = helper {
                                 helper = Some(attr.parse_args()?);
                             } else {
@@ -144,6 +156,12 @@ impl Parse for HostObjectImpl {
                         .collect();
 
                     match helper.unwrap_or(HostObjectHelper::Method { name: None }) {
+                        // If a name is provided in the attribute, use it. Otherwise, use the method name
+                        // with any "get" prefix removed and camel-cased. Named getter attributes are provided 
+                        // like #[host_object(getter as custom_name)]
+                        // 
+                        // - "foo_bar" => "fooBar"
+                        // - "get_foo_bar" => "fooBar"
                         HostObjectHelper::Getter { prop } => {
                             let prop = if let Some(prop) = prop {
                                 prop.to_string()
@@ -163,6 +181,9 @@ impl Parse for HostObjectImpl {
                             // just check the shape, the actual types will be
                             // checked by the compiler after the macro expands
 
+                            // checks if the inputs slice contains exactly two elements, where the first is a 
+                            // method receiver (self, &self, or &mut self) and the second is a typed argument. 
+                            // If this condition is met, input_valid is set to true; otherwise, it is set to false.
                             let input_valid = match &inputs[..] {
                                 [FnArg::Receiver(_), FnArg::Typed(_)] => true,
                                 _ => false,

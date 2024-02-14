@@ -3,12 +3,11 @@ use std::marker::PhantomData;
 use jsi::{host_object, FromValue, JsiValue, PropName, RuntimeHandle};
 use rust_decimal::{prelude::ToPrimitive, Decimal};
 
-use crate::helpers::{call_obj_method, log_to_console};
+use crate::helpers::call_obj_method;
 
 /**
  * Implementation of the Decimal class in Rust, using the `rust_decimal` crate.
  */
-
 pub struct FastDecimal<'rt> {
 	value: Decimal,
 	data: PhantomData<&'rt ()>,
@@ -40,21 +39,11 @@ impl<'rt> FastDecimal<'rt> {
 
 	/// Get the value of the Decimal as a number
 	pub fn to_number(&self, _rt: &mut RuntimeHandle) -> anyhow::Result<f64> {
-		match self.value.to_f64() {
-			Some(n) => {
-				Ok(n)
-			}
-			None => Err(anyhow::anyhow!("Invalid number")),
-		}
+		self.value.to_f64().ok_or_else(|| anyhow::anyhow!("Unable to convert to number"))
 	}
 
 	/// Add two Decimals together
-	// Issue is that the macro attempts to convert each argument to a JsiValue, 
-	// but the `FastDecimal` struct is already a JsiValue, so it fails
-	// Path forward: I could modify the [host_object] macro in order to support
-	// custom code for the case where a JsiValue is returned
-	pub fn add(&self, rt: &mut RuntimeHandle<'rt>, other: FastDecimal) -> anyhow::Result<Self> {
-		log_to_console(rt, format!("Adding {} and {}", self.value, other.value).as_str()).ok();
+	pub fn add(&self, _rt: &mut RuntimeHandle<'rt>, other: FastDecimal) -> anyhow::Result<Self> {
 		Ok(FastDecimal::new(self.value + other.value))
 	}
 
